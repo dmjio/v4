@@ -1,0 +1,20 @@
+name:                v4
+version:             0.1.0.0
+synopsis:            AWS v4 Req Generator
+description:         AWS v4 Req Generator
+license:             BSD3
+license-file:        LICENSE
+author:              David Johnson
+maintainer:          djohnson.m@gmail.com
+copyright:           David Johnson
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+executable app
+  main-is:             Main.hs
+  build-depends:       base >=4.7 && <4.8
+                     , base16-bytestring
+                     , time
+                     , cryptohash
+  default-language:    Haskell2010
