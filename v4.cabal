@@ -17,4 +17,7 @@ executable app
                      , base16-bytestring
                      , time
                      , cryptohash
+                     , bytestring
+                     , old-locale
   default-language:    Haskell2010
+

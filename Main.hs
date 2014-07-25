@@ -1,13 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-
 module Main where
 
 import           Control.Applicative
+import           Crypto.Hash            (Digest)
 import           Crypto.Hash.SHA256
-import           Crypto.Hash (Digest)
 import           Crypto.MAC.HMAC
+import           Data.ByteString        (ByteString)
 import           Data.ByteString.Base16 (encode)
-import           Data.ByteString.Char8  (ByteString)
 import qualified Data.ByteString.Char8  as B8
 import           Data.Char
 import           Data.Monoid
@@ -15,11 +14,13 @@ import           Data.Time
 import           System.IO.Unsafe
 import           System.Locale
 
+main :: IO ()
+main = putStrLn "testing aws..."
+
 -- HexEncode represents a function that returns
 -- the base-16 encoding of the digest in lowercase characters
 
 -- Step 1: create canonical
-
 -- B8.putStrLn req
 -- This is formulated correctly
 req :: ByteString
@@ -75,7 +76,7 @@ stringToSign = B8.intercalate "\n" [ algo
                                                 , "us-east-1"
                                                 , "iam"
                                                 , "aws4_request"
-                                                ] 
+                                                ]
         hashedCanonicalReq = hashedCanonical
 
 -- | === Calculate Signature === | --
@@ -85,12 +86,16 @@ secret :: ByteString
 secret = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
 
 signingKey :: ByteString
-signingKey = kSigning 
+signingKey = kSigning
   where kDate    = hmacSHA256 ("AWS4" <> secret) "20110909"
         kRegion  = hmacSHA256 kDate    "us-east-1"
         kService = hmacSHA256 kRegion  "iam"
         kSigning = hmacSHA256 kService "aws4_request"
-        
+
 -- This is WRONG!!
 signature :: ByteString
-signature = encode (hmacSHA256 signingKey stringToSign) 
+signature = encode $ hmacSHA256 signingKey stringToSign
+
+-- 0f2aa3359df27278923c1af3b1bb4db10ea0bc7a440f0dd50b58ec65b9f0c78
+-- should be: 
+-- ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c
