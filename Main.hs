@@ -39,7 +39,7 @@ req = B8.intercalate "\n" [ method
         hexHashPayload = "Action=ListUsers&Version=2010-05-08"
 
 hmacSHA256 :: ByteString -> ByteString -> ByteString
-hmacSHA256 secret msg = hmac hash 512 secret msg
+hmacSHA256 secret msg = hmac hash 64 secret msg
 
 lower :: ByteString -> ByteString
 lower = B8.map toLower
@@ -92,7 +92,6 @@ signingKey = kSigning
         kService = hmacSHA256 kRegion  "iam"
         kSigning = hmacSHA256 kService "aws4_request"
 
--- This is WRONG!!
 signature :: ByteString
 signature = encode $ hmacSHA256 signingKey stringToSign
 
