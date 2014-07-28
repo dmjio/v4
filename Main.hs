@@ -17,12 +17,7 @@ import           System.Locale
 main :: IO ()
 main = putStrLn "testing aws..."
 
--- HexEncode represents a function that returns
--- the base-16 encoding of the digest in lowercase characters
-
--- Step 1: create canonical
--- B8.putStrLn req
--- This is formulated correctly
+-- | Step 1: create canonical request
 req :: ByteString
 req = B8.intercalate "\n" [ method
                           , uri
@@ -51,19 +46,18 @@ removeWhiteSpace :: ByteString -> ByteString
 removeWhiteSpace = B8.filter (/=' ')
 
 -- Step 2: hash canonical
--- String to sign
 hashedCanonical :: ByteString
 hashedCanonical = hexEncode (hash req)
 
-dateTime :: ByteString
-dateTime = unsafePerformIO $ fmt <$> getCurrentTime
+dateTime :: IO ByteString
+dateTime = fmt <$> getCurrentTime
   where fmt = B8.pack . formatTime defaultTimeLocale "%Y%m%d"
 
-isoDate :: ByteString
-isoDate = unsafePerformIO $ iso8601 <$> getCurrentTime
+isoDate :: IO ByteString
+isoDate = iso8601 <$> getCurrentTime
   where iso8601 = B8.pack . formatTime defaultTimeLocale "%Y%m%dT%H%M%SZ"
 
--- This is formulated correctly
+-- Step 3: Create string to sign
 stringToSign :: ByteString
 stringToSign = B8.intercalate "\n" [ algo
                                    , reqDate
@@ -79,9 +73,6 @@ stringToSign = B8.intercalate "\n" [ algo
                                                 ]
         hashedCanonicalReq = hashedCanonical
 
--- | === Calculate Signature === | --
-
--- Step 3
 secret :: ByteString
 secret = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
 
@@ -95,6 +86,4 @@ signingKey = kSigning
 signature :: ByteString
 signature = encode $ hmacSHA256 signingKey stringToSign
 
--- 0f2aa3359df27278923c1af3b1bb4db10ea0bc7a440f0dd50b58ec65b9f0c78
--- should be: 
--- ced6826de92d2bdeed8f846f0bf508e8559e98e4b0199114b84c54174deb456c
+
