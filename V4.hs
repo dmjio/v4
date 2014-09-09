@@ -11,6 +11,7 @@ module V4
     , Params
       -- * API Functions
     , createSignature
+    , isoDate
     )
     where
 
