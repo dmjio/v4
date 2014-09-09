@@ -54,9 +54,6 @@ data CanonicalRequest = CanonicalRequest {
     , canonicalRequestActions :: Params
 } deriving (Show, Eq)
 
-secret :: ByteString
-secret = "wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY"
-
 createSignature
     :: SecretKey        -- ^ Your AWS Secret Key
     -> CanonicalRequest -- ^ The Canonical Request 
@@ -91,7 +88,7 @@ stringToSign
                       ]
       return $ B8.intercalate "\n" [
                   "AWS4-HMAC-SHA256"
-                 , "20110909T233600Z"
+                 , longDate
                  , credScope
                  , hexEncode $ createCanonical canonicalRequest
                  ]
