@@ -27,8 +27,7 @@ import           Data.Monoid
 import           Data.Time
 import           Data.Function
 import           Data.List
-
-import           System.IO.Unsafe
+import           Data.Time
 import           System.Locale
 
 type Region  = ByteString
@@ -56,37 +55,40 @@ data CanonicalRequest = CanonicalRequest {
 
 createSignature
     :: SecretKey        -- ^ Your AWS Secret Key
+    -> UTCTime          -- ^ TimeStamp for Request
     -> CanonicalRequest -- ^ The Canonical Request 
     -> Region           -- ^ The region you wish to use to perform this AWS operation
     -> Service          -- ^ The service you'd like to use to perfrom this AWS operation
-    -> IO ByteString
+    -> ByteString
 createSignature
     secretKey
+    time
     canonicalRequest
     region
-    service
-    = encode <$> liftA2 hmacSHA256 key string
-  where key    = signingKey secretKey region service
-        string = stringToSign canonicalRequest region service
+    service = encode $ hmacSHA256 key string
+  where key    = signingKey secretKey region service time
+        string = stringToSign canonicalRequest time region service 
 
 stringToSign
     :: CanonicalRequest
+    -> UTCTime
     -> Region
     -> Service
-    -> IO ByteString
+    -> ByteString
 stringToSign
     canonicalRequest
+    time
     region
-    service = do
-      smallDate <- dateTime
-      longDate  <- isoDate
-      let credScope = B8.intercalate "/" [
+    service = 
+      let smallDate = dateTime time
+          longDate  = isoDate time
+          credScope = B8.intercalate "/" [
                         smallDate
                       , region
                       , service
                       , "aws4_request"
                       ]
-      return $ B8.intercalate "\n" [
+      in B8.intercalate "\n" [
                   "AWS4-HMAC-SHA256"
                  , longDate
                  , credScope
@@ -96,18 +98,20 @@ signingKey
     :: SecretKey
     -> Region
     -> Service
-    -> IO ByteString
+    -> UTCTime
+    -> ByteString
 signingKey
   (SecretKey secretKey)
   region
-  service = do
-    date <- dateTime
-    return $ foldr hmacSHA256 ("AWS4" <> secretKey) [
-                 date
-               , region
-               , service
-               , "aws4_request"
-               ]
+  service
+  time = 
+    let date = dateTime time
+    in foldr hmacSHA256 ("AWS4" <> secretKey) [
+             date
+           , region
+           , service
+           , "aws4_request"
+           ]
 
 createCanonical
     :: CanonicalRequest
@@ -143,13 +147,15 @@ hexEncode
     -> ByteString
 hexEncode = B8.map toLower . encode . hash
 
-dateTime :: IO ByteString
-dateTime = fmt <$> getCurrentTime
-  where fmt = B8.pack . formatTime defaultTimeLocale "%Y%m%d"
+dateTime
+    :: UTCTime
+    -> ByteString
+dateTime = B8.pack . formatTime defaultTimeLocale "%Y%m%d"
 
-isoDate :: IO ByteString
-isoDate = iso8601 <$> getCurrentTime
-  where iso8601 = B8.pack . formatTime defaultTimeLocale "%Y%m%dT%H%M%SZ"
+isoDate
+    :: UTCTime
+    -> ByteString
+isoDate = B8.pack . formatTime defaultTimeLocale "%Y%m%dT%H%M%SZ"
 
 toQueryString :: [(ByteString, ByteString)] -> ByteString
 toQueryString [] = ""
