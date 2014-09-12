@@ -8,10 +8,12 @@ module V4
     , SecretKey        (..)
     , Region
     , Service
-    , Params
+    , Headers
+    , Payload
       -- * API Functions
     , createSignature
     , isoDate
+    , dateTime
     )
     where
 
@@ -29,11 +31,13 @@ import           Data.Time
 import           Data.Function
 import           Data.List
 import           Data.Time
+import           Debug.Trace
 import           System.Locale
 
 type Region  = ByteString
 type Service = ByteString
-type Params  = [(ByteString, ByteString)]
+type Headers = [(ByteString, ByteString)]
+type Payload = [(ByteString, ByteString)]
 
 newtype SecretKey = 
     SecretKey ByteString deriving (Eq, Show)
@@ -46,12 +50,11 @@ data Method =
     deriving (Show, Eq)
 
 data CanonicalRequest = CanonicalRequest {
-      canonicalRequestMethod  :: Method
-    , canonicalURI            :: ByteString
-    , canonicalQueryString    :: ByteString
-    , canonicalHeaders        :: Params
-    , canonicalSignedHeaders  :: [ByteString]
-    , canonicalRequestActions :: Params
+      canonicalRequestMethod  :: Method      -- ^ POST | GET | PUT | DELETE
+    , canonicalURI            :: ByteString  -- ^ will ususally be a forward slash
+    , canonicalQueryString    :: ByteString  -- ^ will usaully be blank (unless a GET request)
+    , canonicalHeaders        :: Headers     -- ^ ?
+    , canonicalPayload        :: Payload     -- ^ ?
 } deriving (Show, Eq)
 
 createSignature
@@ -60,13 +63,16 @@ createSignature
     -> CanonicalRequest -- ^ The Canonical Request 
     -> Region           -- ^ The region you wish to use to perform this AWS operation
     -> Service          -- ^ The service you'd like to use to perfrom this AWS operation
-    -> ByteString
+    -> IO ByteString
 createSignature
     secretKey
     time
     canonicalRequest
     region
-    service = encode $ hmacSHA256 key string
+    service = do 
+      B8.putStrLn string
+      B8.putStrLn $ createCanonical canonicalRequest
+      return $ encode $ hmacSHA256 key string
   where key    = signingKey secretKey region service time
         string = stringToSign canonicalRequest time region service 
 
@@ -107,7 +113,7 @@ signingKey
   service
   time = 
     let date = dateTime time
-    in foldr hmacSHA256 ("AWS4" <> secretKey) [
+    in foldl' hmacSHA256 ("AWS4" <> secretKey) [
              date
            , region
            , service
@@ -133,9 +139,10 @@ createCanonical
                                     B8.concat [ 
                                            B8.map toLower k 
                                           , ":", v, "\n", c 
-                                          ]) mempty (sortBy (compare `on` fst) canonicalHeaders)
-        signedHeaders  = B8.intercalate ";" canonicalSignedHeaders
-        requestActions = toQueryString canonicalRequestActions
+                                          ]) mempty sortedHeaders
+        sortedHeaders  = sortBy (compare `on` fst) canonicalHeaders
+        signedHeaders  = B8.intercalate ";" . map (B8.map toLower . fst) $ sortedHeaders
+        requestActions = toQueryString canonicalPayload
 
 hmacSHA256
     :: ByteString
